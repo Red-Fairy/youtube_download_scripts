@@ -36,6 +36,8 @@ def download_video(video_ids, output_root, cookie_path):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Download videos from YouTube')
+    parser.add_argument('--start', type=int, default=0, help='Start index')
+    parser.add_argument('--end', type=int, default=-1, help='End index')
     parser.add_argument('--output_root', type=str, required=True, help='Root directory to save the downloaded videos')
     parser.add_argument('--id_file_path', type=str, required=True, help='Path to the file containing video IDs')
     parser.add_argument('--cookie_path', type=str, default=None, help='Path to the cookie file')
@@ -49,8 +51,15 @@ if __name__ == '__main__':
 
     for line in lines:
       json_data = json.loads(line)
-      video_ids.append(json_data['id'])
+      if 'id' in json_data:
+        video_ids.append(json_data['id'])
+      elif 'videos' in json_data:
+        for video in json_data['videos']:
+          video_ids.append(video['videoId'])
+      else:
+        print(f"Video ID not found in the file {id_file_path}")
+        exit(1)
 
+    video_ids = video_ids[args.start: args.end if args.end != -1 else len(video_ids)]
     print("Number of videos to download: ", len(video_ids))
-
     download_video(video_ids, args.output_root, args.cookie_path)
