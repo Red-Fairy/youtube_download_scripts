@@ -7,7 +7,24 @@ import argparse
 import json
 import glob
 
-def download_video(video_ids, output_root, cookie_path):
+class Logger:
+    def __init__(self, log_path):
+        self.log_path = log_path
+        self.log_file = open(log_path, 'a')
+    
+    def log(self, message):
+        print(message)
+        self.log_file.write(message + '\n') 
+        self.log_file.flush()
+
+    def log_silent(self, message):
+        self.log_file.write(message + '\n') 
+        self.log_file.flush()
+
+    def __del__(self):
+        self.log_file.close()
+
+def download_video(video_ids, output_root, cookie_path, logger: Logger):
 
     # Set yt-dlp options
     ytdlp_options = {
@@ -30,8 +47,9 @@ def download_video(video_ids, output_root, cookie_path):
             # ydl.params['format'] = video_format
             ydl.download([video_url])
             os.rename(os.path.join(output_root, f"{video_id}.mp4"), output_path)
+            logger.log(f"Downloaded video with ID {video_id}")
         else:
-            print(f"Video with ID {video_id} already exists in the specified output path.")
+            logger.log(f"Video with ID {video_id} already exists in the specified output path.")
 
 if __name__ == '__main__':
 
@@ -41,9 +59,13 @@ if __name__ == '__main__':
     parser.add_argument('--output_root', type=str, required=True, help='Root directory to save the downloaded videos')
     parser.add_argument('--id_file_path', type=str, required=True, help='Path to the file containing video IDs')
     parser.add_argument('--cookie_path', type=str, default=None, help='Path to the cookie file')
+    parser.add_argument('--log_path', type=str, default=None, help='Path to the log file')
     args = parser.parse_args()
     
     id_file_path = args.id_file_path
+    log_path = args.log_path
+    logger = Logger(log_path)
+
     video_ids = []
     # each line is a json object
     with open(id_file_path, 'r') as f:
@@ -57,9 +79,9 @@ if __name__ == '__main__':
         for video in json_data['videos']:
           video_ids.append(video['videoId'])
       else:
-        print(f"Video ID not found in the file {id_file_path}")
+        logger.log(f"Video ID not found in the file {id_file_path}")
         exit(1)
 
     video_ids = video_ids[args.start: args.end if args.end != -1 else len(video_ids)]
-    print("Number of videos to download: ", len(video_ids))
-    download_video(video_ids, args.output_root, args.cookie_path)
+    logger.log(f"Number of videos to download: {len(video_ids)}")
+    download_video(video_ids, args.output_root, args.cookie_path, logger)
