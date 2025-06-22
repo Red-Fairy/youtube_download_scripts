@@ -44,10 +44,12 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger):
         output_path = os.path.join(output_root, video_id + '.mp4')
         if not os.path.exists(output_path):
             video_url = f"https://www.youtube.com/watch?v={video_id}"
-            # ydl.params['format'] = video_format
             ydl.download([video_url])
             os.rename(os.path.join(output_root, f"{video_id}.mp4"), output_path)
-            logger.log(f"Downloaded video with ID {video_id}")
+            if os.path.exists(output_path):
+                logger.log(f"Downloaded video with ID {video_id}")
+            else:
+                logger.log(f"Error downloading video with ID {video_id}")
         else:
             logger.log(f"Video with ID {video_id} already exists in the specified output path.")
 
