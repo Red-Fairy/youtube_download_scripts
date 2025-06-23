@@ -7,6 +7,7 @@ import json
 import glob
 import smtplib
 from email.mime.text import MIMEText
+import time
 
 # NEW: Import wandb for progress tracking
 os.environ["WANDB_API_KEY"] = "51014f57401295d9587e4a5b2e8507492e718b73"
@@ -67,6 +68,16 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
     if cookie_path is not None:
         ytdlp_options['cookies'] = cookie_path
 
+    # find the last video id already downloaded
+    last_downloaded_index = len(video_ids)
+    for i, video_id in enumerate(video_ids[::-1]):
+        output_path = os.path.join(output_root, video_id + '.mp4')
+        if os.path.exists(output_path):
+            last_downloaded_index = i
+            break
+    lasted_downloaded_index = len(video_ids) - last_downloaded_index 
+    video_ids = video_ids[lasted_downloaded_index:]
+
     with yt_dlp.YoutubeDL(ytdlp_options) as ydl:
       for video_id in video_ids:
         print(f"Downloading video with ID {video_id}")
@@ -87,9 +98,15 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                     # send_termination_notification(message, email_args)
                     wandb.log({"status": "terminated", "reason": "IP blocked"})
                     break
+                elif "confirm your age" in message:
+                    logger.log(f"Need to confirm age. Skip this video   .")
+                    wandb.log({"status": "terminated", "reason": "Age not confirmed"})
+                elif "content isn't available" in message: # rate limit, sleep for 1 minute
+                    logger.log(f"Content is not available. Skip this video.")
+                    time.sleep(60)
+                    wandb.log({"status": "skipped", "reason": "Content not available"})
                 else:
                     logger.log(f"Error downloading video with ID {video_id}: {e}")
-                    # NEW: Log error to wandb
                     wandb.log({"download_status": "error", "video_id": video_id, "error_message": message})
         else:
             logger.log(f"Video with ID {video_id} already exists in the specified output path.")
