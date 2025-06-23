@@ -9,6 +9,7 @@ import smtplib
 from email.mime.text import MIMEText
 
 # NEW: Import wandb for progress tracking
+os.environ["WANDB_API_KEY"] = "51014f57401295d9587e4a5b2e8507492e718b73"
 import wandb
 
 class Logger:
@@ -107,7 +108,7 @@ if __name__ == '__main__':
     
     # NEW: Arguments for Weights & Biases and Email Notifications
     parser.add_argument('--wandb_project', type=str, default='youtube-video-downloader', help='Weights & Biases project name')
-    parser.add_argument('--wandb_api_key', type=str, required=True, help='Weights & Biases API key')
+    # parser.add_argument('--wandb_api_key', type=str, required=True, help='Weights & Biases API key')
     parser.add_argument('--sender_email', type=str, default=None, help='Sender email address for notifications')
     parser.add_argument('--sender_password', type=str, default=None, help='Sender email password for notifications')
     parser.add_argument('--receiver_email', type=str, default=None, help='Receiver email address for notifications')
@@ -116,8 +117,6 @@ if __name__ == '__main__':
     
     # NEW: Initialize Weights & Biases
     wandb.init(project=args.wandb_project, config=args)
-
-    os.environ["WANDB_API_KEY"] = args.wandb_api_key
     
     email_args = {
         'sender_email': args.sender_email,
