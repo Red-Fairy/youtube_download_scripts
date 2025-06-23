@@ -79,8 +79,8 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
     video_ids = video_ids[lasted_downloaded_index:]
 
     with yt_dlp.YoutubeDL(ytdlp_options) as ydl:
-      for video_id in video_ids:
-        print(f"Downloading video with ID {video_id}")
+      for i, video_id in enumerate(video_ids):
+        print(f"Downloading video {video_id}, progress: {i+1}/{len(video_ids)}")
         output_path = os.path.join(output_root, video_id + '.mp4')
         
         if not os.path.exists(output_path):
@@ -88,7 +88,6 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
             try:
                 ydl.download([video_url])
                 logger.log(f"Downloaded video with ID {video_id}")
-                # NEW: Log successful download to wandb
                 wandb.log({"download_status": "success", "video_id": video_id})
             except Exception as e:
                 message = str(e)
@@ -99,7 +98,7 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                     wandb.log({"status": "terminated", "reason": "IP blocked"})
                     break
                 elif "confirm your age" in message:
-                    logger.log(f"Need to confirm age. Skip this video   .")
+                    logger.log(f"Need to confirm age. Skip this video.")
                     wandb.log({"status": "terminated", "reason": "Age not confirmed"})
                 elif "content isn't available" in message: # rate limit, sleep for 1 minute
                     logger.log(f"Content is not available. Skip this video.")
@@ -110,7 +109,6 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                     wandb.log({"download_status": "error", "video_id": video_id, "error_message": message})
         else:
             logger.log(f"Video with ID {video_id} already exists in the specified output path.")
-            # NEW: Log existing video to wandb
             wandb.log({"download_status": "already_exists", "video_id": video_id})
                 
 
