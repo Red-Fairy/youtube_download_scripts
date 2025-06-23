@@ -55,7 +55,7 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger):
                 # check the traceback error message
                 message = str(e)
                 import pdb; pdb.set_trace()
-                if "confirm you're not a bot" in message:
+                if "not a bot" in message:
                     logger.log(f"IP is blocked. Terminating the script.")
                     exit(1)
                 else:
