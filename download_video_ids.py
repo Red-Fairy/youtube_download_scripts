@@ -78,9 +78,11 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
     lasted_downloaded_index = len(video_ids) - last_downloaded_index 
     video_ids = video_ids[lasted_downloaded_index:]
 
+    logger.log(f"Start downloading {len(video_ids)} videos")
+
     with yt_dlp.YoutubeDL(ytdlp_options) as ydl:
       for i, video_id in enumerate(video_ids):
-        print(f"Downloading video {video_id}, progress: {i+1}/{len(video_ids)}")
+        logger.log(f"Downloading video {video_id}, progress: {i+1}/{len(video_ids)}")
         output_path = os.path.join(output_root, video_id + '.mp4')
         
         if not os.path.exists(output_path):
@@ -93,7 +95,7 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                 message = str(e)
                 if "not a bot" in message:
                     logger.log(f"IP is blocked. Terminating the script.")
-                    # NEW: Send email notification and log to wandb before exiting
+                    # Send email notification and log to wandb before exiting
                     # send_termination_notification(message, email_args)
                     wandb.log({"status": "terminated", "reason": "IP blocked"})
                     break
@@ -163,7 +165,6 @@ if __name__ == '__main__':
         exit(1)
 
     video_ids = video_ids[args.start: args.end if args.end != -1 else len(video_ids)]
-    logger.log(f"Number of videos to download: {len(video_ids)}")
     download_video(video_ids, args.output_root, args.cookie_path, logger, email_args)
 
     # NEW: Finish the wandb run
