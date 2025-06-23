@@ -33,6 +33,8 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger):
             'bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/bestvideo[vcodec^=avc1]+bestaudio/best[vcodec^=avc1]'
         ),
         'merge_output_format': 'mp4',
+        'ignoreerrors': False,
+        'quiet': True,
     }
 
     if cookie_path is not None:
@@ -47,11 +49,12 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger):
             video_url = f"https://www.youtube.com/watch?v={video_id}"
             try:
                 ydl.download([video_url])
-                os.rename(os.path.join(output_root, f"{video_id}.mp4"), output_path)
+                # os.rename(os.path.join(output_root, f"{video_id}.mp4"), output_path)
                 logger.log(f"Downloaded video with ID {video_id}")
             except Exception as e:
                 # check the traceback error message
                 message = str(e)
+                import pdb; pdb.set_trace()
                 if "confirm you're not a bot" in message:
                     logger.log(f"IP is blocked. Terminating the script.")
                     exit(1)
