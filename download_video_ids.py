@@ -116,6 +116,8 @@ if __name__ == '__main__':
     
     # NEW: Initialize Weights & Biases
     wandb.init(project=args.wandb_project, config=args)
+
+    os.environ["WANDB_API_KEY"] = args.wandb_api_key
     
     email_args = {
         'sender_email': args.sender_email,
