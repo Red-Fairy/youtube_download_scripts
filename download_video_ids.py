@@ -68,16 +68,9 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
     if cookie_path is not None:
         ytdlp_options['cookies'] = cookie_path
 
-    # find the last video id already downloaded
-    last_downloaded_index = len(video_ids)
-    for i, video_id in enumerate(video_ids[::-1]):
-        output_path = os.path.join(output_root, video_id + '.mp4')
-        if os.path.exists(output_path):
-            last_downloaded_index = i
-            break
-    lasted_downloaded_index = len(video_ids) - last_downloaded_index 
-    video_ids = video_ids[lasted_downloaded_index:]
-
+    downloaded_video_paths = glob.glob(os.path.join(output_root, '*.mp4'))
+    downloaded_video_ids = [os.path.basename(path).split('.')[0] for path in downloaded_video_paths]
+    video_ids = [x for x in video_ids if x not in downloaded_video_ids]
     logger.log(f"Start downloading {len(video_ids)} videos")
 
     with yt_dlp.YoutubeDL(ytdlp_options) as ydl:
