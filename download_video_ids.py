@@ -16,6 +16,7 @@ import wandb
 class Logger:
     def __init__(self, log_path):
         self.log_path = log_path
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
         self.log_file = open(log_path, 'a')
     
     def log(self, message):
@@ -77,6 +78,7 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
       for i, video_id in enumerate(video_ids):
         logger.log(f"Downloading video {video_id}, progress: {i+1}/{len(video_ids)}")
         output_path = os.path.join(output_root, video_id + '.mp4')
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
         
         if not os.path.exists(output_path):
             video_url = f"https://www.youtube.com/watch?v={video_id}"
@@ -99,6 +101,9 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                     logger.log(f"Content is not available. Skip this video.")
                     time.sleep(60)
                     wandb.log({"status": "skipped", "reason": "Content not available"})
+                elif "Broken pipe" in message:
+                    logger.log(f"Broken pipe. Skip this video.")
+                    wandb.log({"status": "skipped", "reason": "Broken pipe"})
                 else:
                     logger.log(f"Error downloading video with ID {video_id}: {e}")
                     wandb.log({"download_status": "error", "video_id": video_id, "error_message": message})
