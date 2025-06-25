@@ -23,9 +23,6 @@ class Logger:
         print(message)
         self.log_file.write(message + '\n') 
         self.log_file.flush()
-        # NEW: Log messages to wandb
-        if wandb.run:
-            wandb.log({"log_message": message})
 
     def log_silent(self, message):
         self.log_file.write(message + '\n') 
@@ -85,31 +82,36 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
             try:
                 ydl.download([video_url])
                 logger.log(f"Downloaded video with ID {video_id}")
-                wandb.log({"download_status": "success", "video_id": video_id})
+                wandb.log("log_message", message=f"Downloaded video with ID {video_id}")
             except Exception as e:
                 message = str(e)
                 if "not a bot" in message:
-                    logger.log(f"IP is blocked. Terminating the script.")
+                    message = "IP is blocked. Terminating the script."
+                    logger.log(message)
                     # Send email notification and log to wandb before exiting
                     # send_termination_notification(message, email_args)
-                    wandb.log({"status": "terminated", "reason": "IP blocked"})
+                    wandb.log("log_message", message=message)
                     break
                 elif "confirm your age" in message:
-                    logger.log(f"Need to confirm age. Skip this video.")
-                    wandb.log({"status": "terminated", "reason": "Age not confirmed"})
+                    message = "Need to confirm age. Skip this video."
+                    logger.log(message)
+                    wandb.log("log_message", message=message)
                 elif "content isn't available" in message: # rate limit, sleep for 1 minute
-                    logger.log(f"Content is not available. Skip this video.")
-                    time.sleep(60)
-                    wandb.log({"status": "skipped", "reason": "Content not available"})
+                    message = "Content is not available. Skip this video."
+                    logger.log(message)
+                    wandb.log("log_message", message=message)
                 elif "Broken pipe" in message:
-                    logger.log(f"Broken pipe. Skip this video.")
-                    wandb.log({"status": "skipped", "reason": "Broken pipe"})
+                    message = "Broken pipe. Skip this video."
+                    logger.log(message)
+                    wandb.log("log_message", message=message)
                 else:
-                    logger.log(f"Error downloading video with ID {video_id}: {e}")
-                    wandb.log({"download_status": "error", "video_id": video_id, "error_message": message})
+                    message = f"Error downloading video: {e}"
+                    logger.log(message)
+                    wandb.log("log_message", message=message)
         else:
-            logger.log(f"Video with ID {video_id} already exists in the specified output path.")
-            wandb.log({"download_status": "already_exists", "video_id": video_id})
+            message = f"Video already exists."
+            logger.log(message)
+            wandb.log("log_message", message=message)
                 
 
 if __name__ == '__main__':
