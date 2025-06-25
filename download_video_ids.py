@@ -167,5 +167,4 @@ if __name__ == '__main__':
     video_ids = video_ids[args.start: args.end if args.end != -1 else len(video_ids)]
     download_video(video_ids, args.output_root, args.cookie_path, logger, email_args)
 
-    # NEW: Finish the wandb run
     wandb.finish()
