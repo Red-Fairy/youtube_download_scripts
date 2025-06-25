@@ -91,7 +91,7 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                     # Send email notification and log to wandb before exiting
                     # send_termination_notification(message, email_args)
                     wandb.log("log_message", message=message)
-                    break
+                    return False
                 elif "confirm your age" in message:
                     message = "Need to confirm age. Skip this video."
                     logger.log(message)
@@ -112,7 +112,8 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
             message = f"Video already exists."
             logger.log(message)
             wandb.log("log_message", message=message)
-                
+
+    return True
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Download videos from YouTube')
@@ -165,6 +166,11 @@ if __name__ == '__main__':
         exit(1)
 
     video_ids = video_ids[args.start: args.end if args.end != -1 else len(video_ids)]
-    download_video(video_ids, args.output_root, args.cookie_path, logger, email_args)
+    success = download_video(video_ids, args.output_root, args.cookie_path, logger, email_args)
 
+    # write the success to a file
+    if success:
+        logger.log(f"Finished successfully.")
+
+    del logger
     wandb.finish()
