@@ -14,7 +14,8 @@ os.environ["WANDB_API_KEY"] = "51014f57401295d9587e4a5b2e8507492e718b73"
 import wandb
 
 MAX_DOWNLOAD_RETRIES = 5
-DELAY_BETWEEN_VIDEOS_SECONDS = 60
+DELAY_FOR_RATE_LIMIT = 60
+DELAY_FOR_SUCCESS_DOWNLOAD = 10
 
 class Logger:
     def __init__(self, log_path):
@@ -108,7 +109,7 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                                 wandb.log({"last_video_status": "Failed, Reason: " + message_short})
                                 break # Give up
 
-                            backoff_time = DELAY_BETWEEN_VIDEOS_SECONDS
+                            backoff_time = DELAY_FOR_RATE_LIMIT
                             logger.log(f"WARNING: Encountered a '{message_short}' for {video_id}. Retrying in {backoff_time} seconds... (Attempt {retries}/{MAX_DOWNLOAD_RETRIES})")
                             time.sleep(backoff_time)
                         
@@ -131,8 +132,8 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
 
                 # --- NEW: Polite delay between each video download ---
                 if download_successful:
-                    logger.log(f"Waiting {DELAY_BETWEEN_VIDEOS_SECONDS}s before next video...")
-                    time.sleep(DELAY_BETWEEN_VIDEOS_SECONDS)
+                    logger.log(f"Waiting {DELAY_FOR_SUCCESS_DOWNLOAD}s before next video...")
+                    time.sleep(DELAY_FOR_SUCCESS_DOWNLOAD)
 
             else:
                 message = f"Video already exists."
