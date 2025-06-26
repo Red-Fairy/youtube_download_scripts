@@ -82,7 +82,7 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
             try:
                 ydl.download([video_url])
                 logger.log(f"Downloaded video with ID {video_id}")
-                wandb.log("log_message", message=f"Downloaded video with ID {video_id}")
+                wandb.log({"log_message": f"Downloaded video with ID {video_id}"})
             except Exception as e:
                 message = str(e)
                 if "not a bot" in message:
@@ -90,28 +90,28 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                     logger.log(message)
                     # Send email notification and log to wandb before exiting
                     # send_termination_notification(message, email_args)
-                    wandb.log("log_message", message=message)
+                    wandb.log({"log_message": message})
                     return False
                 elif "confirm your age" in message:
                     message = "Need to confirm age. Skip this video."
                     logger.log(message)
-                    wandb.log("log_message", message=message)
+                    wandb.log({"log_message": message})
                 elif "content isn't available" in message: # rate limit, sleep for 1 minute
                     message = "Content is not available. Skip this video."
                     logger.log(message)
-                    wandb.log("log_message", message=message)
+                    wandb.log({"log_message": message})
                 elif "Broken pipe" in message:
                     message = "Broken pipe. Skip this video."
                     logger.log(message)
-                    wandb.log("log_message", message=message)
+                    wandb.log({"log_message": message})
                 else:
                     message = f"Error downloading video: {e}"
                     logger.log(message)
-                    wandb.log("log_message", message=message)
+                    wandb.log({"log_message": message})
         else:
             message = f"Video already exists."
             logger.log(message)
-            wandb.log("log_message", message=message)
+            wandb.log({"log_message": message})
 
     return True
 
