@@ -99,6 +99,7 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                 elif "content isn't available" in message: # rate limit, sleep for 1 minute
                     message = "Content is not available. Skip this video."
                     logger.log(message)
+                    time.sleep(60)
                     wandb.log({"log_message": message})
                 elif "Broken pipe" in message:
                     message = "Broken pipe. Skip this video."
