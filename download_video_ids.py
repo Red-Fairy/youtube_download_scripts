@@ -13,6 +13,9 @@ import time
 os.environ["WANDB_API_KEY"] = "51014f57401295d9587e4a5b2e8507492e718b73"
 import wandb
 
+MAX_DOWNLOAD_RETRIES = 5
+DELAY_BETWEEN_VIDEOS_SECONDS = 60
+
 class Logger:
     def __init__(self, log_path):
         self.log_path = log_path
@@ -71,48 +74,103 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
     video_ids = [x for x in video_ids if x not in downloaded_video_ids]
     logger.log(f"Start downloading {len(video_ids)} videos")
 
+    total_videos = len(video_ids)
+
     with yt_dlp.YoutubeDL(ytdlp_options) as ydl:
-      for i, video_id in enumerate(video_ids):
-        logger.log(f"Downloading video {video_id}, progress: {i+1}/{len(video_ids)}")
-        output_path = os.path.join(output_root, video_id + '.mp4')
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        for i, video_id in enumerate(video_ids):
+            logger.log(f"--- Processing video {i+1}/{total_videos}: {video_id} ---")
+            wandb.log({"message": f"Processing video {i+1}/{total_videos}: {video_id}"})
+
+            output_path = os.path.join(output_root, video_id + '.mp4')
+
+            if not os.path.exists(output_path):
+                retries = 0
+                download_successful = False
+                while retries < MAX_DOWNLOAD_RETRIES:
+                    try:
+                        video_url = f"https://www.youtube.com/watch?v={video_id}"
+                        ydl.download([video_url])
+                        logger.log(f"Successfully downloaded video with ID {video_id}")
+                        wandb.log({"progress": (i+1)/total_videos, "last_video_status": "Success"})
+                        wandb.log({"message": f"Successfully downloaded video with ID {video_id}"})
+                        download_successful = True
+                        break 
+
+                    except Exception as e:
+                        message = str(e)
+                        # Check for "Broken pipe" or other common transient network errors
+                        if "Broken pipe" in message or "content isn't available" in message:
+                            message_short = "Broken pipe" if "Broken pipe" in message else "Content not available"
+                            retries += 1
+                            if retries >= MAX_DOWNLOAD_RETRIES:
+                                logger.log(f"ERROR: Download failed for {video_id} after {MAX_DOWNLOAD_RETRIES} retries. Final error: {message}")
+                                wandb.log({"message": f"Download failed for {video_id} after {MAX_DOWNLOAD_RETRIES} retries. Final error: {message}"})
+                                wandb.log({"last_video_status": "Failed, Reason: " + message_short})
+                                break # Give up
+
+                            backoff_time = DELAY_BETWEEN_VIDEOS_SECONDS
+                            logger.log(f"WARNING: Encountered a '{message_short}' for {video_id}. Retrying in {backoff_time} seconds... (Attempt {retries}/{MAX_DOWNLOAD_RETRIES})")
+                            time.sleep(backoff_time)
+                        
+                        elif "not a bot" in message:
+                            message = "IP is blocked. Terminating the script."
+                            logger.log(message)
+                            wandb.log({"message": message})
+                            # send_termination_notification(message, email_args)
+                            return False # This is a fatal error, so we exit the function
+                        
+                        else: # Handle other, non-retriable errors
+                            if 'confirm your age' in message:
+                                message = "Need to confirm age for video " + video_id + ". Skipping this video."
+                            else:
+                                message = f"Encountered unexpected error: {e} when downloading video {video_id}"
+                            logger.log(f"ERROR: An unrecoverable error occurred for video {video_id}: {message}")
+                            wandb.log({"message": message})
+                            wandb.log({"last_video_status": "Failed (Other)"})
+                            break # Exit retry loop for other errors
+
+                # --- NEW: Polite delay between each video download ---
+                if download_successful:
+                    logger.log(f"Waiting {DELAY_BETWEEN_VIDEOS_SECONDS}s before next video...")
+                    time.sleep(DELAY_BETWEEN_VIDEOS_SECONDS)
+
+            else:
+                message = f"Video already exists."
+                logger.log(message)
+                wandb.log({"log_message": message})
         
-        if not os.path.exists(output_path):
-            video_url = f"https://www.youtube.com/watch?v={video_id}"
-            try:
-                ydl.download([video_url])
-                logger.log(f"Downloaded video with ID {video_id}")
-                wandb.log({"log_message": f"Downloaded video with ID {video_id}"})
-            except Exception as e:
-                message = str(e)
-                if "not a bot" in message:
-                    message = "IP is blocked. Terminating the script."
-                    logger.log(message)
-                    # Send email notification and log to wandb before exiting
-                    # send_termination_notification(message, email_args)
-                    wandb.log({"log_message": message})
-                    return False
-                elif "confirm your age" in message:
-                    message = "Need to confirm age. Skip this video."
-                    logger.log(message)
-                    wandb.log({"log_message": message})
-                elif "content isn't available" in message: # rate limit, sleep for 1 minute
-                    message = "Content is not available. Skip this video."
-                    logger.log(message)
-                    time.sleep(60)
-                    wandb.log({"log_message": message})
-                elif "Broken pipe" in message:
-                    message = "Broken pipe. Skip this video."
-                    logger.log(message)
-                    wandb.log({"log_message": message})
-                else:
-                    message = f"Error downloading video: {e}"
-                    logger.log(message)
-                    wandb.log({"log_message": message})
-        else:
-            message = f"Video already exists."
-            logger.log(message)
-            wandb.log({"log_message": message})
+        # if not os.path.exists(output_path):
+        #     video_url = f"https://www.youtube.com/watch?v={video_id}"
+        #     try:
+        #         ydl.download([video_url])
+        #         logger.log(f"Downloaded video with ID {video_id}")
+        #         wandb.log({"log_message": f"Downloaded video with ID {video_id}"})
+        #     except Exception as e:
+        #         message = str(e)
+        #         if "not a bot" in message:
+        #             message = "IP is blocked. Terminating the script."
+        #             logger.log(message)
+        #             # Send email notification and log to wandb before exiting
+        #             # send_termination_notification(message, email_args)
+        #             wandb.log({"log_message": message})
+        #             return False
+        #         elif "confirm your age" in message:
+        #             message = "Need to confirm age. Skip this video."
+        #             logger.log(message)
+        #             wandb.log({"log_message": message})
+        #         elif "content isn't available" in message: # rate limit, sleep for 1 minute
+        #             message = "Content is not available. Skip this video."
+        #             logger.log(message)
+        #             time.sleep(60)
+        #             wandb.log({"log_message": message})
+        #         elif "Broken pipe" in message:
+        #             message = "Broken pipe. Skip this video."
+        #             logger.log(message)
+        #             wandb.log({"log_message": message})
+        #         else:
+        #             message = f"Error downloading video: {e}"
+        #             logger.log(message)
+        #             wandb.log({"log_message": message})
 
     return True
 
