@@ -77,6 +77,8 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
 
     total_videos = len(video_ids)
 
+    giveup_count = 0
+
     with yt_dlp.YoutubeDL(ytdlp_options) as ydl:
         for i, video_id in enumerate(video_ids):
             logger.log(f"--- Processing video {i+1}/{total_videos}: {video_id} ---")
@@ -107,7 +109,13 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                                 logger.log(f"ERROR: Download failed for {video_id} after {MAX_DOWNLOAD_RETRIES} retries. Final error: {message}")
                                 wandb.log({"message": f"Download failed for {video_id} after {MAX_DOWNLOAD_RETRIES} retries. Final error: {message}"})
                                 wandb.log({"last_video_status": "Failed, Reason: " + message_short})
+                                giveup_count += 1
                                 break # Give up
+
+                            if giveup_count >= 10:
+                                logger.log(f"ERROR: Give up after {giveup_count} videos due to Broken pipe or Content not available. Terminating the script.")
+                                wandb.log({"message": f"Give up after {giveup_count} videos due to Broken pipe or Content not available. Terminating the script."})
+                                return False # This is a fatal error, so we exit the function
 
                             backoff_time = DELAY_FOR_RATE_LIMIT
                             logger.log(f"WARNING: Encountered a '{message_short}' for {video_id}. Retrying in {backoff_time} seconds... (Attempt {retries}/{MAX_DOWNLOAD_RETRIES})")
@@ -183,6 +191,7 @@ if __name__ == '__main__':
     parser.add_argument('--id_file_path', type=str, required=True, help='Path to the file containing video IDs')
     parser.add_argument('--cookie_path', type=str, default=None, help='Path to the cookie file')
     parser.add_argument('--log_path', type=str, default=None, help='Path to the log file')
+    parser.add_argument('--unwanted_categories', type=str, nargs='+', default=["Music"], help='List of unwanted categories')
     
     # NEW: Arguments for Weights & Biases and Email Notifications
     parser.add_argument('--wandb_project', type=str, default='youtube-video-downloader', help='Weights & Biases project name')
@@ -217,7 +226,9 @@ if __name__ == '__main__':
                 video_ids.append(json_data['id'])
             elif 'videos' in json_data:
                 for video in json_data['videos']:
-                    video_ids.append(video['videoId'])
+                    category = video['categoryName'] if 'categoryName' in video else None
+                    if category is None or category not in args.unwanted_categories:
+                        video_ids.append(video['videoId'])
         except json.JSONDecodeError:
             logger.log(f"Skipping line, not a valid JSON object: {line.strip()}")
 
