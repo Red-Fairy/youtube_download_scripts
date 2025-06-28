@@ -21,7 +21,7 @@ class Logger:
     def __init__(self, log_path):
         self.log_path = log_path
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
-        self.log_file = open(log_path, 'a')
+        self.log_file = open(log_path, 'w')
     
     def log(self, message):
         print(message)
