@@ -13,8 +13,8 @@ import time
 os.environ["WANDB_API_KEY"] = "51014f57401295d9587e4a5b2e8507492e718b73"
 import wandb
 
-MAX_DOWNLOAD_RETRIES = 5
-DELAY_FOR_RATE_LIMIT = 60
+MAX_DOWNLOAD_RETRIES = 3
+DELAY_FOR_RATE_LIMIT = 15
 DELAY_FOR_SUCCESS_DOWNLOAD = 10
 
 class Logger:
@@ -112,7 +112,7 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                                 giveup_count += 1
                                 break # Give up
 
-                            if giveup_count >= 10:
+                            if giveup_count >= 50:
                                 message = f"Give up after {giveup_count} videos due to Broken pipe or Content not available.\nTerminating the script."
                                 logger.log(message)
                                 wandb.log({"message": message})
