@@ -161,7 +161,6 @@ if __name__ == '__main__':
     parser.add_argument('--log_path', type=str, default=None, help='Path to the log file')
     parser.add_argument('--unwanted_categories', type=str, nargs='+', default=["Music"], help='List of unwanted categories')
     
-    # NEW: Arguments for Weights & Biases and Email Notifications
     parser.add_argument('--wandb_project', type=str, default='youtube-video-downloader', help='Weights & Biases project name')
     # parser.add_argument('--wandb_api_key', type=str, required=True, help='Weights & Biases API key')
     parser.add_argument('--sender_email', type=str, default=None, help='Sender email address for notifications')
