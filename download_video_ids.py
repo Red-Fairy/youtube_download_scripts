@@ -157,6 +157,7 @@ if __name__ == '__main__':
     parser.add_argument('--end', type=int, default=-1, help='End index')
     parser.add_argument('--output_root', type=str, required=True, help='Root directory to save the downloaded videos')
     parser.add_argument('--id_file_path', type=str, required=True, help='Path to the file containing video IDs')
+    parser.add_argument('--wanted_id_file_paths', type=str, nargs='+', default=[], help='List of wanted id file paths')
     parser.add_argument('--cookie_path', type=str, default=None, help='Path to the cookie file')
     parser.add_argument('--log_path', type=str, default=None, help='Path to the log file')
     parser.add_argument('--unwanted_categories', type=str, nargs='+', default=["Music"], help='List of unwanted categories')
@@ -182,7 +183,7 @@ if __name__ == '__main__':
     log_path = args.log_path
     logger = Logger(log_path)
 
-    video_ids = []
+    video_ids = set()
     with open(id_file_path, 'r') as f:
         lines = f.readlines()
 
@@ -190,14 +191,31 @@ if __name__ == '__main__':
         try:
             json_data = json.loads(line)
             if 'id' in json_data:
-                video_ids.append(json_data['id'])
+                video_ids.add(json_data['id'])
             elif 'videos' in json_data:
                 for video in json_data['videos']:
                     category = video['categoryName'] if 'categoryName' in video else None
                     if category is None or category not in args.unwanted_categories:
-                        video_ids.append(video['videoId'])
+                        video_ids.add(video['videoId'])
         except json.JSONDecodeError:
             logger.log(f"Skipping line, not a valid JSON object: {line.strip()}")
+
+    unwanted_video_ids = set()
+    for wanted_id_file_path in args.wanted_id_file_paths:
+        with open(wanted_id_file_path, 'r') as f:
+            lines = f.readlines()
+        try:
+            json_data = json.loads(lines)
+            if 'id' in json_data:
+                unwanted_video_ids.add(json_data['id'])
+            elif 'videos' in json_data:
+                for video in json_data['videos']:
+                    unwanted_video_ids.add(video['videoId'])
+        except json.JSONDecodeError:
+            logger.log(f"Skipping line, not a valid JSON object: {line.strip()}")
+
+    video_ids = video_ids - unwanted_video_ids
+    video_ids = list(video_ids)
 
     if not video_ids:
         logger.log(f"No video IDs found in the file {id_file_path}")
