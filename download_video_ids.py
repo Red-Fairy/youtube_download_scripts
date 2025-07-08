@@ -16,6 +16,7 @@ import wandb
 MAX_DOWNLOAD_RETRIES = 3
 DELAY_FOR_RATE_LIMIT = 15
 DELAY_FOR_SUCCESS_DOWNLOAD = 10
+MAX_GIVEUP_COUNT = 5
 
 class Logger:
     def __init__(self, log_path):
@@ -97,6 +98,7 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                         wandb.log({"progress": (i+1)/total_videos, "last_video_status": "Success"})
                         wandb.log({"message": f"Successfully downloaded video with ID {video_id}"})
                         download_successful = True
+                        giveup_count = 0
                         break 
 
                     except Exception as e:
@@ -112,7 +114,7 @@ def download_video(video_ids, output_root, cookie_path, logger: Logger, email_ar
                                 giveup_count += 1
                                 break # Give up
 
-                            if giveup_count >= 50:
+                            if giveup_count >= MAX_GIVEUP_COUNT:
                                 message = f"Give up after {giveup_count} videos due to Broken pipe or Content not available.\nTerminating the script."
                                 logger.log(message)
                                 wandb.log({"message": message})
